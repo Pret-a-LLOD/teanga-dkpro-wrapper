@@ -1,0 +1,7 @@
+
+document.conll
+document.txt
+document.txt.conll
+target/
+
+.gitignore.swp
