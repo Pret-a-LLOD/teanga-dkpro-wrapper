@@ -10,7 +10,7 @@ public class DKProWrapper extends ResourceConfig {
 
     public DKProWrapper() {
         packages("org.insightcentre.uld.teanga.dkprowrapper");
-        register(TreeTagger.class);
+        register(DKPro.class);
     }
 
     
