@@ -66,7 +66,7 @@ public class DKPro {
              @QueryParam("modelLocation") String modelLocation,
              @QueryParam("posMappingLocation") String posMappingLocation,
              @QueryParam("printTagset") @DefaultValue("false") boolean printTagset,
-             @QueryParam("variant") String variant)
+             @QueryParam("modelVariant") String variant)
             throws NotFoundException {
         
         try {
