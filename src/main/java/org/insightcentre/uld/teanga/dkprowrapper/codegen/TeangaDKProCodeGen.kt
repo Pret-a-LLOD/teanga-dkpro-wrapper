@@ -5,12 +5,12 @@ import java.util.stream.Collectors
 import java.lang.ClassNotFoundException
 import kotlin.Throws
 import kotlin.jvm.JvmStatic
-import org.dkpro.core.opennlp.OpenNlpChunker
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import org.apache.uima.fit.descriptor.ConfigurationParameter
 import org.apache.uima.fit.descriptor.ResourceMetaData
 import org.apache.uima.jcas.tcas.Annotation
+import org.dkpro.core.opennlp.*
 import java.io.File
 import java.io.PrintWriter
 import java.lang.Exception
@@ -29,8 +29,17 @@ object TeangaDKProCodeGen {
                 desc.vendor = anno.vendor
                 desc.version = anno.version
             } else if (anno is TypeCapability) {
-                desc.inputs = anno.inputs
-                desc.outputs = anno.outputs
+                if (Arrays.equals(anno.inputs, arrayOf(TypeCapability.NO_DEFAULT_VALUE))) {
+                    desc.inputs = arrayOf()
+                } else {
+                    desc.inputs = anno.inputs
+                }
+
+                if (Arrays.equals(anno.outputs, arrayOf(TypeCapability.NO_DEFAULT_VALUE))) {
+                    desc.outputs = arrayOf()
+                } else {
+                    desc.outputs = anno.outputs
+                }
             }
         }
         for (field in clazz.declaredFields) {
@@ -95,6 +104,8 @@ object TeangaDKProCodeGen {
     }
 
     private fun casName(inputs: Array<String>?): String {
+        if(inputs?.size == 0)
+            return "EmptyCas";
         return "Cas" + Arrays.stream(inputs).map { c: String? ->
             try {
                 return@map Class.forName(c).simpleName
@@ -547,11 +558,11 @@ object TeangaDKProCodeGen {
         val map = mutableMapOf<String, CasType>()
         for (descriptor in descriptors) {
             val nameIn = casName(descriptor.inputs)
-            if (!map.containsKey(nameIn)) {
+            if (!map.containsKey(nameIn) && nameIn != "EmptyCas") {
                 map[nameIn] = CasType(nameIn, descriptor.inputs?.map { x -> Class.forName(x) })
             }
             val nameOut = casName(descriptor.outputs)
-            if (!map.containsKey(nameOut)) {
+            if (!map.containsKey(nameOut) && nameOut != "EmptyCas") {
                 map[nameOut] = CasType(nameOut, descriptor.outputs?.map { x -> Class.forName(x) })
             }
         }
@@ -570,7 +581,7 @@ object TeangaDKProCodeGen {
     }
 
     private fun buildPojos(clazz: Class<*>, map: MutableMap<String, Class<*>>) {
-        if(!map.contains(clazz.canonicalName) && Annotation::class.java.isAssignableFrom(clazz)) {
+        if(!map.contains(clazz.canonicalName) && Annotation::class.java.isAssignableFrom(clazz) && clazz.simpleName != "Annotation") {
             map[clazz.canonicalName] = clazz
             for (method in clazz.methods) {
                 if (method.name.startsWith("get") && method.declaringClass == clazz) {
@@ -586,6 +597,11 @@ object TeangaDKProCodeGen {
         File("generated").mkdirs()
         val serviceDescriptors = mutableListOf<ServiceDescriptor>()
         serviceDescriptors.add(extractServiceDescriptor(OpenNlpChunker::class.java))
+        serviceDescriptors.add(extractServiceDescriptor(OpenNlpLemmatizer::class.java))
+        serviceDescriptors.add(extractServiceDescriptor(OpenNlpParser::class.java))
+        serviceDescriptors.add(extractServiceDescriptor(OpenNlpPosTagger::class.java))
+        serviceDescriptors.add(extractServiceDescriptor(OpenNlpSegmenter::class.java))
+        serviceDescriptors.add(extractServiceDescriptor(OpenNlpSnowballStemmer::class.java))
         val m: Any = makeOpenApiDescription(serviceDescriptors)
         val mapper = ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
         val openapiFile = PrintWriter("generated/openapi.json")
