@@ -6,3 +6,4 @@ target/
 
 .gitignore.swp
 .idea
+generated

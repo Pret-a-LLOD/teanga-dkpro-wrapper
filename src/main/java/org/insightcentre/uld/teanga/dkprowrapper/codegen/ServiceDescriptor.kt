@@ -8,7 +8,8 @@ class ServiceDescriptor {
     var vendor: String? = null
     var description: String? = null
     var version: String? = null
-    var clazzName: String? = null
+    var classShortName: String? = null
+    var classFullName: String? = null
     var inputs: Array<String>? = null
     var outputs: Array<String>? = null
     var parameters: MutableList<Parameter> = ArrayList()
