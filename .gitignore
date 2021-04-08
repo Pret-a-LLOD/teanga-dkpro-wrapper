@@ -5,3 +5,4 @@ document.txt.conll
 target/
 
 .gitignore.swp
+.idea
