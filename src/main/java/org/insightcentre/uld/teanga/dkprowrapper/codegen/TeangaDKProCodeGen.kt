@@ -429,8 +429,8 @@ object TeangaDKProCodeGen {
                                         "    \n")
                     }
                 }
-                casOut.print("    public static Cas${casType.name} fromUIMA(CAS cas) throws CASException {\n" +
-                        "        Cas${casType.name} c = new Cas${casType.name}();\n" +
+                casOut.print("    public static ${casType.name} fromUIMA(CAS cas) throws CASException {\n" +
+                        "        ${casType.name} c = new ${casType.name}();\n" +
                         "        c.setDocumentText(cas.getDocumentText());\n" +
                         "        c.setLanguage(cas.getDocumentLanguage());\n")
                 if (casType.members != null) {
