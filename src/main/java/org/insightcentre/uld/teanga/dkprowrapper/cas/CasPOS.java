@@ -1,12 +1,14 @@
 package org.insightcentre.uld.teanga.dkprowrapper.cas;
 
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.POS;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.uima.cas.CAS;
 import org.apache.uima.cas.CASException;
-import static org.apache.uima.fit.util.JCasUtil.select;
 import org.insightcentre.uld.teanga.dkprowrapper.pojos.DKProPOS;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.apache.uima.fit.util.JCasUtil.select;
 
 /**
  *

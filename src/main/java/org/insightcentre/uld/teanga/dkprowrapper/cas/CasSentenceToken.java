@@ -1,9 +1,10 @@
 package org.insightcentre.uld.teanga.dkprowrapper.cas;
 
-import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
-import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
+import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token;
 import org.apache.uima.cas.CAS;
 import org.apache.uima.cas.CASException;
 import static org.apache.uima.fit.util.JCasUtil.select;

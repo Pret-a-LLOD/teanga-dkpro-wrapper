@@ -1,7 +1,7 @@
 package org.insightcentre.uld.teanga.dkprowrapper;
 
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
-import de.tudarmstadt.ukp.dkpro.core.io.text.StringReader;
+import org.dkpro.core.io.text.StringReader;
 import static java.util.Arrays.asList;
 import org.apache.uima.UIMAFramework;
 import org.apache.uima.analysis_component.AnalysisComponent;
