@@ -10,8 +10,7 @@
     <packaging>war</packaging>
 
     <name>teanga-dkpro-wrapper Maven Webapp</name>
-    <!-- FIXME change it to the project's website -->
-    <url>http://www.example.com</url>
+    <url>http://github.com/pret-a-llod/teanga-dkpro-wrapper</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -20,6 +19,7 @@
         <jetty.version>9.4.38.v20210224</jetty.version>
         <jersey.version>2.28</jersey.version>
         <jackson.version>2.9.8</jackson.version>
+        <dkpro.version>2.2.0</dkpro.version>
     </properties>
 
     <dependencies>
@@ -49,34 +49,34 @@
 		   <version>2.3.0</version>
 		</dependency>
         <dependency>
-            <groupId>de.tudarmstadt.ukp.dkpro.core</groupId>
-            <artifactId>de.tudarmstadt.ukp.dkpro.core.opennlp-asl</artifactId>
-            <version>1.8.0</version>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-opennlp-asl</artifactId>
+	    <version>${dkpro.version}</version>
         </dependency>
         <dependency>
-            <groupId>de.tudarmstadt.ukp.dkpro.core</groupId>
-            <artifactId>de.tudarmstadt.ukp.dkpro.core.languagetool-asl</artifactId>
-            <version>1.8.0</version>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-languagetool-asl</artifactId>
+	    <version>${dkpro.version}</version>
         </dependency>
         <dependency>
-            <groupId>de.tudarmstadt.ukp.dkpro.core</groupId>
-            <artifactId>de.tudarmstadt.ukp.dkpro.core.maltparser-asl</artifactId>
-            <version>1.8.0</version>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-maltparser-asl</artifactId>
+	    <version>${dkpro.version}</version>
         </dependency>
         <dependency>
-            <groupId>de.tudarmstadt.ukp.dkpro.core</groupId>
-            <artifactId>de.tudarmstadt.ukp.dkpro.core.io.text-asl</artifactId>
-            <version>1.8.0</version>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-io-text-asl</artifactId>
+	    <version>${dkpro.version}</version>
         </dependency>
          <dependency>
-            <groupId>de.tudarmstadt.ukp.dkpro.core</groupId>
-            <artifactId>de.tudarmstadt.ukp.dkpro.core.io.json-asl</artifactId>
-            <version>1.8.0</version>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-io-json-asl</artifactId>
+	    <version>${dkpro.version}</version>
         </dependency>
         <dependency>
-            <groupId>de.tudarmstadt.ukp.dkpro.core</groupId>
-            <artifactId>de.tudarmstadt.ukp.dkpro.core.io.conll-asl</artifactId>
-            <version>1.8.0</version>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-io-conll-asl</artifactId>
+	    <version>${dkpro.version}</version>
         </dependency>        
         <dependency>
             <groupId>org.glassfish.jersey.containers</groupId>

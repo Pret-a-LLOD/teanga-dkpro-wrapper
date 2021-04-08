@@ -1,7 +1,7 @@
 package org.insightcentre.uld.teanga.dkprowrapper;
 
-import de.tudarmstadt.ukp.dkpro.core.opennlp.OpenNlpPosTagger;
-import de.tudarmstadt.ukp.dkpro.core.opennlp.OpenNlpSegmenter;
+import org.dkpro.core.opennlp.OpenNlpPosTagger;
+import org.dkpro.core.opennlp.OpenNlpSegmenter;
 import java.util.Collections;
 import java.util.List;
 import javax.ws.rs.*;
@@ -34,7 +34,7 @@ public class DKPro {
             @QueryParam("writeToken") @DefaultValue("true") boolean writeToken,
             @QueryParam("zoneTypes") List<String> zoneTypes) {
         if(zoneTypes == null)
-            zoneTypes = Collections.singletonList("de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Div");
+            zoneTypes = Collections.singletonList("org.dkpro.core.api.segmentation.type.Div");
         try {
             DKProInstance instance = new DKProInstance(
                 OpenNlpSegmenter.class,
@@ -72,7 +72,7 @@ public class DKPro {
         try {
             DKProInstance instance = new DKProInstance(
                     OpenNlpPosTagger.class,
-                    OpenNlpPosTagger.PARAM_INTERN_TAGS, internTags,
+                    //OpenNlpPosTagger.PARAM_INTERN_TAGS, internTags,
                     OpenNlpPosTagger.PARAM_LANGUAGE, language,
                     OpenNlpPosTagger.PARAM_MODEL_LOCATION, modelLocation,
                     OpenNlpPosTagger.PARAM_POS_MAPPING_LOCATION, posMappingLocation,
