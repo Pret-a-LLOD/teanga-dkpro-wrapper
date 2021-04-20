@@ -14,6 +14,7 @@ import org.dkpro.core.opennlp.*
 import java.io.File
 import java.io.PrintWriter
 import java.lang.Exception
+import java.lang.reflect.Method
 import java.util.*
 
 object TeangaDKProCodeGen {
@@ -180,11 +181,9 @@ object TeangaDKProCodeGen {
             val end = HashMap<String, Any>()
             properties["end"] = end
             end["type"] = "integer"
-            for (method in clazz.methods) {
-                if (method.name.startsWith("get") && method.declaringClass == clazz) {
-                    val name = method.name.substring(3, 4).toLowerCase() + method.name.substring(4)
-                    properties[name] = typeToOpenAPI(method.returnType, schemas)
-                }
+            for (method in getterMethods(clazz)) {
+                val name = method.name.substring(3, 4).toLowerCase() + method.name.substring(4)
+                properties[name] = typeToOpenAPI(method.returnType, schemas)
             }
             m["properties"] = properties
         }
@@ -318,7 +317,7 @@ object TeangaDKProCodeGen {
                     "        reader.typeSystemInit(cas.getTypeSystem());\n" +
                     "    }\n" +
                     "    \n" +
-                    "    public void processEmpty(EmptyCas userCas) throws AnalysisEngineProcessException {\n" +
+                    "    public void processEmptyCas(EmptyCas userCas) throws AnalysisEngineProcessException {\n" +
                     "        cas.reset();\n" +
                     "        cas.setDocumentText(userCas.documentText);\n" +
                     "        cas.setDocumentLanguage(userCas.language);\n" +
@@ -507,10 +506,9 @@ object TeangaDKProCodeGen {
                         " * @author John McCrae\n" +
                         " */\n" +
                         "@JsonInclude(JsonInclude.Include.NON_NULL)\n" +
-                        "class DKPro${pojo.simpleName} extends DKProAnnotation {\n")
+                        "public class DKPro${pojo.simpleName} extends DKProAnnotation {\n")
 
-                for (method in pojo.methods) {
-                    if (method.name.startsWith("get") && method.declaringClass == pojo) {
+                for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
                         pojoOut.print("    private ${method.returnType.canonicalName} ${name};\n" +
                                 "\n" +
@@ -522,29 +520,24 @@ object TeangaDKProCodeGen {
                                 "        this.${name} = ${name};\n" +
                                 "    }\n" +
                                 "    \n")
-                    }
                 }
                 pojoOut.print("    public static DKPro${pojo.simpleName} fromDKPro(${pojo.canonicalName} dkproObj) {\n" +
                         "        DKPro${pojo.simpleName} s = new DKPro${pojo.simpleName}();\n" +
                         "        s.annoFromDKPro(dkproObj);\n")
-                for (method in pojo.methods) {
-                    if (method.name.startsWith("get") && method.declaringClass == pojo) {
+                for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
                         pojoOut.print("        s.set${name}(dkproObj.get${name}());\n")
-                    }
                 }
                 pojoOut.print("        return s;\n" +
                         "    }\n" +
                         "\n" +
-                        "    public Stem toDKPro(JCas cas) {\n" +
+                        "    public ${pojo.canonicalName} toDKPro(JCas cas) {\n" +
                         "        ${pojo.canonicalName} s = new ${pojo.canonicalName}(cas);\n" +
                         "        annoToDKPro(s);\n")
 
-                for (method in pojo.methods) {
-                    if (method.name.startsWith("get") && method.declaringClass == pojo) {
+                for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
                         pojoOut.print("        s.set${name}(${name});\n")
-                    }
                 }
                 pojoOut.print(
                         "        return s;\n" +
@@ -583,11 +576,16 @@ object TeangaDKProCodeGen {
     private fun buildPojos(clazz: Class<*>, map: MutableMap<String, Class<*>>) {
         if(!map.contains(clazz.canonicalName) && Annotation::class.java.isAssignableFrom(clazz) && clazz.simpleName != "Annotation") {
             map[clazz.canonicalName] = clazz
-            for (method in clazz.methods) {
-                if (method.name.startsWith("get") && method.declaringClass == clazz) {
-                    buildPojos(method.returnType, map)
-                }
+            for (method in getterMethods(clazz)) {
+                buildPojos(method.returnType, map)
             }
+        }
+    }
+
+    private fun getterMethods(clazz: Class<*>): List<Method> {
+        return clazz.methods.filter { method -> method.name.startsWith("get") && method.declaringClass == clazz &&
+                clazz.methods.any { m2 -> m2.name == method.name.replace("get","set")} &&
+                method.parameters.isEmpty()
         }
     }
 
