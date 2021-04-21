@@ -10,8 +10,9 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import org.apache.uima.fit.descriptor.ConfigurationParameter
 import org.apache.uima.fit.descriptor.ResourceMetaData
 import org.apache.uima.jcas.tcas.Annotation
-import org.dkpro.core.opennlp.*
+import java.io.BufferedReader
 import java.io.File
+import java.io.FileReader
 import java.io.PrintWriter
 import java.lang.Exception
 import java.lang.reflect.Method
@@ -105,7 +106,7 @@ object TeangaDKProCodeGen {
     }
 
     private fun casName(inputs: Array<String>?): String {
-        if(inputs?.size == 0)
+        if(inputs?.size == 0 || inputs == null)
             return "EmptyCas";
         return "Cas" + Arrays.stream(inputs).map { c: String? ->
             try {
@@ -118,7 +119,7 @@ object TeangaDKProCodeGen {
     }
 
     private fun schemaObject(inputs: Array<String>?, schemas: HashMap<String, Any>): Any {
-        return if (inputs == null || inputs.size == 0) {
+        return if (inputs == null || inputs.isEmpty()) {
             if (!schemas.containsKey("EmptyCas")) {
                 val emptyCas = HashMap<String, Any>()
                 emptyCas["type"] = "object"
@@ -207,8 +208,9 @@ object TeangaDKProCodeGen {
         return m
     }
 
-    fun generateJavaCode(descriptors: List<ServiceDescriptor>) {
-        val dkProJava = PrintWriter("generated/DKPro.java")
+    fun generateJavaCode(descriptors: List<ServiceDescriptor>, jar: String) {
+        File("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper").mkdirs()
+        val dkProJava = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/DKPro.java")
         dkProJava.use {
             dkProJava.println("package org.insightcentre.uld.teanga.dkprowrapper;\n" +
                     "\n" +
@@ -259,7 +261,7 @@ object TeangaDKProCodeGen {
             dkProJava.print("\n}")
         }
 
-        val dkProInstance = PrintWriter("generated/DKProInstance.java")
+        val dkProInstance = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/DKProInstance.java")
         dkProInstance.use {
             dkProInstance.print("package org.insightcentre.uld.teanga.dkprowrapper;\n" +
                     "\n" +
@@ -346,8 +348,8 @@ object TeangaDKProCodeGen {
             }
             dkProInstance.print("}")
         }
-        File("generated/cas").mkdirs()
-        val casEmptyOut = PrintWriter("generated/cas/EmptyCas.java")
+        File("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/cas").mkdirs()
+        val casEmptyOut = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/cas/EmptyCas.java")
         casEmptyOut.use {
             casEmptyOut.print("package org.insightcentre.uld.teanga.dkprowrapper.cas;\n" +
                     "\n" +
@@ -394,7 +396,7 @@ object TeangaDKProCodeGen {
                     "}\n")
         }
         for (casType in getCasTypes(descriptors)) {
-            val casOut = PrintWriter("generated/cas/${casType.name}.java")
+            val casOut = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/cas/${casType.name}.java")
             casOut.use {
                 casOut.print("package org.insightcentre.uld.teanga.dkprowrapper.cas;\n" +
                         "\n" +
@@ -446,8 +448,8 @@ object TeangaDKProCodeGen {
                         "}\n")
             }
         }
-        File("generated/pojos").mkdirs()
-        val dkProAnnotationJava = PrintWriter("generated/pojos/DKProAnnotation.java")
+        File("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/pojos").mkdirs()
+        val dkProAnnotationJava = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/pojos/DKProAnnotation.java")
         dkProAnnotationJava.use {
             dkProAnnotationJava.print("package org.insightcentre.uld.teanga.dkprowrapper.pojos;\n" +
                     "\n" +
@@ -494,7 +496,7 @@ object TeangaDKProCodeGen {
                     "}\n")
         }
         for(pojo in getPojos(descriptors)) {
-            val pojoOut = PrintWriter("generated/pojos/DKPro${pojo.simpleName}.java")
+            val pojoOut = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/pojos/DKPro${pojo.simpleName}.java")
             pojoOut.use {
                 pojoOut.print("package org.insightcentre.uld.teanga.dkprowrapper.pojos;\n" +
                         "\n" +
@@ -552,11 +554,23 @@ object TeangaDKProCodeGen {
         for (descriptor in descriptors) {
             val nameIn = casName(descriptor.inputs)
             if (!map.containsKey(nameIn) && nameIn != "EmptyCas") {
-                map[nameIn] = CasType(nameIn, descriptor.inputs?.map { x -> Class.forName(x) })
+                map[nameIn] = CasType(nameIn, descriptor.inputs?.flatMap { x ->
+                    try {
+                        listOf(Class.forName(x))
+                    } catch(x: ClassNotFoundException) {
+                        listOf()
+                    }
+                })
             }
             val nameOut = casName(descriptor.outputs)
             if (!map.containsKey(nameOut) && nameOut != "EmptyCas") {
-                map[nameOut] = CasType(nameOut, descriptor.outputs?.map { x -> Class.forName(x) })
+                map[nameOut] = CasType(nameOut, descriptor.outputs?.flatMap { x ->
+                    try {
+                        listOf(Class.forName(x))
+                    } catch(x: ClassNotFoundException) {
+                        listOf()
+                    }
+                })
             }
         }
         return map.values
@@ -565,9 +579,13 @@ object TeangaDKProCodeGen {
     private fun getPojos(descriptors: List<ServiceDescriptor>): Collection<Class<*>> {
         val map = mutableMapOf<String, Class<*>>()
         for (descriptor in descriptors) {
-            for (className in descriptor.inputs!! + descriptor.outputs!!) {
-                val clazz = Class.forName(className)
-                buildPojos(clazz, map)
+            for (className in (descriptor.inputs?: arrayOf<String>()) + (descriptor.outputs?: arrayOf<String>())) {
+                try {
+                    val clazz = Class.forName(className)
+                    buildPojos(clazz, map)
+                } catch(e: ClassNotFoundException) {
+                    e.printStackTrace()
+                }
             }
         }
         return map.values
@@ -592,21 +610,23 @@ object TeangaDKProCodeGen {
     @Throws(Exception::class)
     @JvmStatic
     fun main(args: Array<String>) {
-        File("generated").mkdirs()
-        val serviceDescriptors = mutableListOf<ServiceDescriptor>()
-        serviceDescriptors.add(extractServiceDescriptor(OpenNlpChunker::class.java))
-        serviceDescriptors.add(extractServiceDescriptor(OpenNlpLemmatizer::class.java))
-        serviceDescriptors.add(extractServiceDescriptor(OpenNlpParser::class.java))
-        serviceDescriptors.add(extractServiceDescriptor(OpenNlpPosTagger::class.java))
-        serviceDescriptors.add(extractServiceDescriptor(OpenNlpSegmenter::class.java))
-        serviceDescriptors.add(extractServiceDescriptor(OpenNlpSnowballStemmer::class.java))
-        val m: Any = makeOpenApiDescription(serviceDescriptors)
-        val mapper = ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
-        val openapiFile = PrintWriter("generated/openapi.json")
-        openapiFile.use {
-            mapper.writeValue(openapiFile, m)
+        val dockers = mutableMapOf<String, MutableList<String>>()
+        for(line in BufferedReader(FileReader("dockers.csv")).lines()) {
+            val elems = line.split(",")
+            dockers.getOrPut(elems[0]) { mutableListOf() }.add(elems[1])
         }
-        generateJavaCode(serviceDescriptors)
+        for((jar, clazzes) in dockers) {
+            File("dockers/$jar").mkdirs()
+            System.err.println(jar)
+            val serviceDescriptors = clazzes.map { c -> extractServiceDescriptor(Class.forName(c)) }
+            val m: Any = makeOpenApiDescription(serviceDescriptors)
+            val mapper = ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
+            val openapiFile = PrintWriter("dockers/$jar/openapi.json")
+            openapiFile.use {
+                mapper.writeValue(openapiFile, m)
+            }
+            generateJavaCode(serviceDescriptors, jar)
+        }
     }
 }
 
