@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import org.apache.uima.fit.descriptor.ConfigurationParameter
 import org.apache.uima.fit.descriptor.ResourceMetaData
+import org.apache.uima.jcas.cas.DoubleArray
+import org.apache.uima.jcas.cas.FloatArray
+import org.apache.uima.jcas.cas.IntegerArray
 import org.apache.uima.jcas.tcas.Annotation
 import java.io.BufferedReader
 import java.io.File
@@ -16,6 +19,8 @@ import java.io.FileReader
 import java.io.PrintWriter
 import java.lang.Exception
 import java.lang.reflect.Method
+import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
 import java.util.*
 
 object TeangaDKProCodeGen {
@@ -31,13 +36,13 @@ object TeangaDKProCodeGen {
                 desc.vendor = anno.vendor
                 desc.version = anno.version
             } else if (anno is TypeCapability) {
-                if (Arrays.equals(anno.inputs, arrayOf(TypeCapability.NO_DEFAULT_VALUE))) {
+                if (anno.inputs.contentEquals(arrayOf(TypeCapability.NO_DEFAULT_VALUE))) {
                     desc.inputs = arrayOf()
                 } else {
                     desc.inputs = anno.inputs
                 }
 
-                if (Arrays.equals(anno.outputs, arrayOf(TypeCapability.NO_DEFAULT_VALUE))) {
+                if (anno.outputs.contentEquals(arrayOf(TypeCapability.NO_DEFAULT_VALUE))) {
                     desc.outputs = arrayOf()
                 } else {
                     desc.outputs = anno.outputs
@@ -50,6 +55,7 @@ object TeangaDKProCodeGen {
                     desc.parameters.add(ServiceDescriptor.Parameter(
                             anno.name,
                             field.type,
+                            field.genericType,
                             anno.mandatory,
                             anno.defaultValue,
                             anno.description
@@ -184,26 +190,71 @@ object TeangaDKProCodeGen {
             end["type"] = "integer"
             for (method in getterMethods(clazz)) {
                 val name = method.name.substring(3, 4).toLowerCase() + method.name.substring(4)
-                properties[name] = typeToOpenAPI(method.returnType, schemas)
+                properties[name] = typeToOpenAPI(method.returnType, null, schemas)
             }
             m["properties"] = properties
         }
     }
 
     @JvmStatic
-    fun typeToOpenAPI(clazz: Class<*>, schemas: HashMap<String, Any>?): Any {
+    fun typeToOpenAPI(clazz: Class<*>, type: Type?, schemas: HashMap<String, Any>?): Any {
         val m = HashMap<String, Any?>()
         if (clazz == String::class.java) {
             m["type"] = "string"
         } else if (clazz == Boolean::class.javaPrimitiveType || clazz == Boolean::class.java) {
             m["type"] = "boolean"
-        } else if (clazz == Int::class.javaPrimitiveType || clazz == Int::class.java) {
+        } else if (clazz == Int::class.javaPrimitiveType || clazz == java.lang.Integer::class.java) {
             m["type"] = "integer"
+        } else if (clazz == Long::class.javaPrimitiveType || clazz == java.lang.Long::class.java) {
+            m["type"] = "integer"
+            m["format"] = "int64"
+        } else if (clazz == Float::class.javaPrimitiveType || clazz == Float::class.java) {
+            m["type"] = "number"
+            m["format"] = "float"
+        } else if (clazz == Double::class.javaPrimitiveType || clazz == Double::class.java) {
+            m["type"] = "number"
+            m["format"] = "double"
+        } else if (clazz == Array<String>::class.java) {
+            m["type"] = "array"
+            m["items"] = mapOf("type" to "string")
+        } else if (clazz == FloatArray::class.java) { // Custom converter
+            m["type"] = "array"
+            m["items"] = mapOf("type" to "number", "format" to "float")
+        } else if (clazz == DoubleArray::class.java) { // Custom converter
+            m["type"] = "array"
+            m["items"] = mapOf("type" to "number", "format" to "double")
+        } else if (clazz == IntegerArray::class.java) { // Custom converter
+            m["type"] = "array"
+            m["items"] = mapOf("type" to "number", "format" to "int")
+        } else if (clazz == java.util.regex.Pattern::class.java) { // Custom converter
+            m["type"] = "string"
+        } else if (java.util.Collection::class.java.isAssignableFrom(clazz)) {
+            if(type is ParameterizedType) {
+                val t = type.actualTypeArguments[0]
+                m["type"] = "array"
+                val map =  HashMap<String, Any>()
+                m["items"] = map
+                if(t is Class<*>) {
+                    typeToOpenAPI(t, null, map)
+                } else {
+                    System.err.println("Cannot cast Type to Class??")
+                }
+            } else {
+                System.err.println(type)
+                System.err.println("Could not infer generic type for " + clazz.simpleName)
+            }
+
         } else if (Annotation::class.java.isAssignableFrom(clazz)) {
             m["\$ref"] = "#/components/schemas/" + clazz.simpleName
-            if (schemas != null) schemaAnnoType(clazz, schemas) else System.err.println("Could not register " + clazz.simpleName)
+            if (schemas != null) schemaAnnoType(
+                clazz,
+                schemas
+            ) else System.err.println("Could not register " + clazz.simpleName)
+        } else if (clazz.enumConstants != null) {
+            m["type"] = "string"
+            m["enum"] = clazz.enumConstants
         } else {
-            System.err.println("Unsupported type: " + clazz.simpleName)
+            System.err.println("Unsupported type: " + clazz.name)
         }
         return m
     }

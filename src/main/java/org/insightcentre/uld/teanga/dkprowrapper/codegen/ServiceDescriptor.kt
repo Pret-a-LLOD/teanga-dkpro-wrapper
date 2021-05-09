@@ -1,6 +1,7 @@
 package org.insightcentre.uld.teanga.dkprowrapper.codegen
 
 import org.insightcentre.uld.teanga.dkprowrapper.codegen.TeangaDKProCodeGen.typeToOpenAPI
+import java.lang.reflect.Type
 
 class ServiceDescriptor {
     var name: String? = null
@@ -17,14 +18,16 @@ class ServiceDescriptor {
     class Parameter {
         var name: String? = null
         var type: Class<*>? = null
+        var genericType: Type? = null
         var mandatory = false
         var defaultValue: Array<String>? = null
         var description: String? = null
 
         constructor() {}
-        constructor(name: String?, type: Class<*>?, mandatory: Boolean, defaultValue: Array<String>?, description: String?) {
+        constructor(name: String?, type: Class<*>?, genericType: Type?, mandatory: Boolean, defaultValue: Array<String>?, description: String?) {
             this.name = name
             this.type = type
+            this.genericType = genericType
             this.mandatory = mandatory
             this.defaultValue = defaultValue
             this.description = description
@@ -37,7 +40,7 @@ class ServiceDescriptor {
             m["in"] = "query"
             m["required"] = mandatory
             val schemas = HashMap<String, Any?>()
-            m["schema"] = typeToOpenAPI(type!!, null)
+            m["schema"] = typeToOpenAPI(type!!, genericType, null)
             if (defaultValue != null) {
                 (m["schema"] as HashMap<String, Any?>?)!!["default"] = defaultValue
             }
