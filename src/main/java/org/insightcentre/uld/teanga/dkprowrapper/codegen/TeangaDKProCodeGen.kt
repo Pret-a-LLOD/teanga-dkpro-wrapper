@@ -7,9 +7,11 @@ import kotlin.Throws
 import kotlin.jvm.JvmStatic
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import org.apache.uima.fit.descriptor.ConfigurationParameter
 import org.apache.uima.fit.descriptor.ResourceMetaData
 import org.apache.uima.jcas.cas.DoubleArray
+import org.apache.uima.jcas.cas.FSArray
 import org.apache.uima.jcas.cas.FloatArray
 import org.apache.uima.jcas.cas.IntegerArray
 import org.apache.uima.jcas.tcas.Annotation
@@ -66,12 +68,12 @@ object TeangaDKProCodeGen {
         return desc
     }
 
-    private fun makeOpenApiDescription(descriptorList: List<ServiceDescriptor>): HashMap<String, Any> {
+    private fun makeOpenApiDescription(jar : String, descriptorList: List<ServiceDescriptor>): HashMap<String, Any> {
         val root = HashMap<String, Any>()
         root["openapi"] = "3.0.0"
         root["info"] = HashMap<Any, Any>()
         (root["info"] as HashMap<String, Any?>?)!!["version"] = "1.0"
-        (root["info"] as HashMap<String, Any?>?)!!["title"] = "DKPro Teanga Wrapper"
+        (root["info"] as HashMap<String, Any?>?)!!["title"] = "DKPro Teanga Wrapper for $jar"
         val paths = HashMap<String, Any>()
         root["paths"] = paths
         val components = HashMap<String, Any>()
@@ -217,16 +219,10 @@ object TeangaDKProCodeGen {
         } else if (clazz == Array<String>::class.java) {
             m["type"] = "array"
             m["items"] = mapOf("type" to "string")
-        } else if (clazz == FloatArray::class.java) { // Custom converter
-            m["type"] = "array"
-            m["items"] = mapOf("type" to "number", "format" to "float")
-        } else if (clazz == DoubleArray::class.java) { // Custom converter
-            m["type"] = "array"
-            m["items"] = mapOf("type" to "number", "format" to "double")
-        } else if (clazz == IntegerArray::class.java) { // Custom converter
-            m["type"] = "array"
-            m["items"] = mapOf("type" to "number", "format" to "int")
-        } else if (clazz == java.util.regex.Pattern::class.java) { // Custom converter
+        } else if (clazz == FloatArray::class.java || clazz == DoubleArray::class.java || clazz == IntegerArray::class.java  ||
+                clazz == java.util.regex.Pattern::class.java || clazz == FSArray::class.java) { // Custom converter
+            m["type"] = "string"
+        } else if (clazz == java.io.File::class.java) {
             m["type"] = "string"
         } else if (java.util.Collection::class.java.isAssignableFrom(clazz)) {
             if(type is ParameterizedType) {
@@ -259,6 +255,17 @@ object TeangaDKProCodeGen {
         return m
     }
 
+    private fun clazzToJavaName(clazz : Class<*>?): String? {
+        return if (clazz == FloatArray::class.java || clazz == DoubleArray::class.java || clazz == IntegerArray::class.java  ||
+            clazz == java.util.regex.Pattern::class.java || clazz == FSArray::class.java) { // Custom converter
+            "String"
+        } else if(clazz != null && clazz.isArray) {
+            "String"
+        } else {
+            clazz?.name?.replace("$",".")
+        }
+    }
+
     fun generateJavaCode(descriptors: List<ServiceDescriptor>, jar: String) {
         File("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper").mkdirs()
         val dkProJava = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/DKPro.java")
@@ -289,10 +296,13 @@ object TeangaDKProCodeGen {
                         "    public Response ${descriptor.classShortName}(" +
                         "         ${casName(descriptor.inputs)} body\n");
                 for (parameter in descriptor.parameters) {
-                    dkProJava.print(",\n            @QueryParam(\"${parameter.name}\") ${parameter.type?.name} ${parameter.name}")
+                    dkProJava.print(",\n            @QueryParam(\"${parameter.name}\") ${clazzToJavaName(parameter.type)} _${parameter.name}")
                 }
                 dkProJava.print(") {\n" +
                         "");
+                for (parameter in descriptor.parameters) {
+                    generateConversion(dkProJava, parameter)
+                }
                 // TODO: Default values
                 dkProJava.print("        try {\n" +
                         "            DKProInstance instance = new DKProInstance(\n" +
@@ -600,6 +610,28 @@ object TeangaDKProCodeGen {
         }
     }
 
+    private fun generateConversion(dkProJava: PrintWriter, parameter: ServiceDescriptor.Parameter) {
+        if(parameter.type == java.util.regex.Pattern::class.java) {
+            dkProJava.println("java.util.regex.Pattern ${parameter.name} = java.util.regex.Pattern.compile(_${parameter.name});")
+//        } else if (parameter.type == FloatArray::class.java) {
+//            dkProJava.println("float[] __${parameter.name} = new com.fasterxml.jackson.databind.ObjectMapper().readValue(_${parameter.name}, float[].class);")
+//            dkProJava.println("JCas _jcas_${parameter.name} = org.apache.uima.util.CasCreationUtils.createCas((TypeSystemDescription) null, null, null).getJCas();")
+//            dkProJava.println("org.apache.uima.jcas.cas.FloatArray ${parameter.name} = org.apache.uima.jcas.cas.FloatArray.create(_jcas_${parameter.name}, __${parameter.name});")
+//        } else if (parameter.type == DoubleArray::class.java) {
+//        } else if (parameter.type == IntegerArray::class.java) {
+//        } else if (parameter.type == FSArray::class.java) {
+        } else if(parameter.type?.isArray == true) {
+            dkProJava.println("${parameter.type?.componentType?.name}[] ${parameter.name} = null;\n" +
+                    "try {\n" +
+                    "  ${parameter.name} = " +
+                    "new com.fasterxml.jackson.databind.ObjectMapper().readValue(_${parameter.name}, " +
+                    "${parameter.type?.componentType?.name}[].class);\n" +
+                    "} catch(java.io.IOException x) { x.printStackTrace(); }")
+        } else {
+            dkProJava.println("${clazzToJavaName(parameter.type)} ${parameter.name} = _${parameter.name};")
+        }
+    }
+
     private fun getCasTypes(descriptors: List<ServiceDescriptor>): Collection<CasType> {
         val map = mutableMapOf<String, CasType>()
         for (descriptor in descriptors) {
@@ -658,6 +690,209 @@ object TeangaDKProCodeGen {
         }
     }
 
+    private fun generatePOM(jar : String) {
+        val pom = PrintWriter("dockers/$jar/pom.xml")
+        pom.use {
+            pom.print("""<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.insightcentre</groupId>
+    <artifactId>teanga-dkpro-wrapper-$jar</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>war</packaging>
+
+    <name>Teanga DKPro Wrapper for $jar</name>
+    <url>http://github.com/pret-a-llod/teanga-dkpro-wrapper</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <jetty.version>9.4.38.v20210224</jetty.version>
+        <jersey.version>2.28</jersey.version>
+        <jackson.version>2.9.8</jackson.version>
+        <dkpro.version>2.2.0</dkpro.version>
+        <kotlin.version>1.4.32</kotlin.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+        </dependency>
+		<dependency>
+			<groupId>javax.activation</groupId>
+			<artifactId>activation</artifactId>
+			<version>1.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>2.3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.xml.bind</groupId>
+			<artifactId>jaxb-core</artifactId>
+			<version>2.3.0</version>
+		</dependency>
+		<dependency>
+		   <groupId>com.sun.xml.bind</groupId>
+		   <artifactId>jaxb-impl</artifactId>
+		   <version>2.3.0</version>
+		</dependency>
+        <dependency>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>$jar</artifactId>
+	        <version>${'$'}{dkpro.version}</version>
+        </dependency>     
+        <dependency>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-io-text-asl</artifactId>
+	        <version>${'$'}{dkpro.version}</version>
+        </dependency>     
+        <dependency>
+            <groupId>org.glassfish.jersey.containers</groupId>
+            <artifactId>jersey-container-servlet</artifactId>
+            <version>${'$'}{jersey.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-server</artifactId>
+            <version>${'$'}{jersey.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.media</groupId>
+            <artifactId>jersey-media-json-jackson</artifactId>
+            <version>${'$'}{jersey.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.inject</groupId>
+            <artifactId>jersey-hk2</artifactId>
+            <version>${'$'}{jersey.version}</version>
+        </dependency><!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.9.8</version>
+        </dependency>
+    </dependencies>
+    
+        <build>
+            <finalName>teanga-dkpro-wrapper-$jar</finalName>
+            <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
+                <plugins>
+                    <plugin>
+                        <groupId>org.eclipse.jetty</groupId>
+                        <artifactId>jetty-maven-plugin</artifactId>
+                        <version>${'$'}{jetty.version}</version>
+                    </plugin>
+
+                </plugins>
+            </pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>compile</id>
+                            <phase>compile</phase>
+                            <goals>
+                                <goal>compile</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>testCompile</id>
+                            <phase>test-compile</phase>
+                            <goals>
+                                <goal>testCompile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </build>
+    </project>""")
+        }
+    }
+
+    private fun genereteWebXML(jar : String) {
+        File("dockers/$jar/src/main/webapp/WEB-INF").mkdirs()
+        val webXML = PrintWriter("dockers/$jar/src/main/webapp/WEB-INF/web.xml")
+        webXML.use {
+            webXML.println("""<!DOCTYPE web-app PUBLIC
+ "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+ "http://java.sun.com/dtd/web-app_2_3.dtd" >
+
+<web-app>
+
+<servlet>
+        <servlet-name>Jersey REST Service</servlet-name>
+        <servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
+        <init-param>
+            <param-name>javax.ws.rs.Application</param-name>
+            <param-value>org.insightcentre.uld.teanga.dkprowrapper.DKProWrapper</param-value>
+        </init-param>
+       <init-param>
+            <param-name>com.sun.jersey.api.json.POJOMappingFeature</param-name>
+            <param-value>true</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>Jersey REST Service</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+</web-app>""")
+        }
+    }
+
+    private fun generateWrapper(jar : String) {
+        val wrapper = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/DKProWrapper.java")
+        wrapper.use {
+            wrapper.println("package org.insightcentre.uld.teanga.dkprowrapper;\n" +
+                    "\n" +
+                    "import org.glassfish.jersey.server.ResourceConfig;\n" +
+                    "\n" +
+                    "/**\n" +
+                    " *\n" +
+                    " * @author John McCrae\n" +
+                    " */\n" +
+                    "public class DKProWrapper extends ResourceConfig {\n" +
+                    "\n" +
+                    "    public DKProWrapper() {\n" +
+                    "        packages(\"org.insightcentre.uld.teanga.dkprowrapper\");\n" +
+                    "        register(DKPro.class);\n" +
+                    "    }\n" +
+                    "\n" +
+                    "    \n" +
+                    "\n" +
+                    "    \n" +
+                    "}")
+        }
+    }
+
+    private fun generateDockerFile(jar : String) {
+        val dockerfile = PrintWriter("dockers/$jar/Dockerfile")
+        dockerfile.use {
+            dockerfile.println("FROM tomcat:9.0-jdk14-openjdk-oracle                                            \n" +
+                    "LABEL description=\"Teanga DKPro Wrapper for $jar\"\n" +
+                    "LABEL version=\"1.0\"\n" +
+                    "LABEL maintainer=\"john@mccr.ae\"\n" +
+                    "EXPOSE 8080" +
+                    "                                                                                \n" +
+                    "RUN rm -rf /usr/local/tomcat/webapps/ROOT                                       \n" +
+                    "COPY target/teanga-dkpro-wrapper-$jar.war /usr/local/tomcat/webapps/ROOT.war\n" +
+                    "COPY openapi.yaml /  ")
+        }
+    }
+
     @Throws(Exception::class)
     @JvmStatic
     fun main(args: Array<String>) {
@@ -670,13 +905,17 @@ object TeangaDKProCodeGen {
             File("dockers/$jar").mkdirs()
             System.err.println(jar)
             val serviceDescriptors = clazzes.map { c -> extractServiceDescriptor(Class.forName(c)) }
-            val m: Any = makeOpenApiDescription(serviceDescriptors)
-            val mapper = ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
-            val openapiFile = PrintWriter("dockers/$jar/openapi.json")
+            val m: Any = makeOpenApiDescription(jar, serviceDescriptors)
+            val mapper = ObjectMapper(YAMLFactory())
+            val openapiFile = PrintWriter("dockers/$jar/openapi.yaml")
             openapiFile.use {
                 mapper.writeValue(openapiFile, m)
             }
             generateJavaCode(serviceDescriptors, jar)
+            generatePOM(jar)
+            genereteWebXML(jar)
+            generateWrapper(jar)
+            generateDockerFile(jar)
         }
     }
 }
