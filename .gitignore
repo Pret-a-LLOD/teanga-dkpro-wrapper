@@ -8,3 +8,5 @@ target/
 .idea
 generated
 dockers
+
+.build-dockers.sh.swp

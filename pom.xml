@@ -416,6 +416,13 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>org.insightcentre.uld.teanga.dkprowrapper.codegen.TeangaDKProCodeGen</mainClass>                                
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
