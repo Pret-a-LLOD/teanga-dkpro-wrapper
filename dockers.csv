@@ -22,9 +22,7 @@ dkpro-core-languagetool-asl,org.dkpro.core.languagetool.LanguageToolLemmatizer
 dkpro-core-api-segmentation-asl,org.dkpro.core.api.segmentation.SegmenterBase
 dkpro-core-ngrams-asl,org.dkpro.core.ngrams.NGramAnnotator
 dkpro-core-norvig-asl,org.dkpro.core.norvig.NorvigSpellingCorrector
-dkpro-core-testing-asl,org.dkpro.core.testing.IOTestRunner
 dkpro-core-testing-asl,org.dkpro.core.testing.DocumentMetaDataStripper
-dkpro-core-testing-asl,org.dkpro.core.testing.AssertAnnotations
 dkpro-core-testing-asl,org.dkpro.core.testing.TagsetDescriptionStripper
 dkpro-core-gate-asl,org.dkpro.core.gate.GateLemmatizer
 dkpro-core-gate-asl,org.dkpro.core.gate.HepplePosTagger

@@ -313,9 +313,9 @@ object TeangaDKProCodeGen {
                 dkProJava.print("            );\n" +
                         "            instance.process${casName(descriptor.inputs)}(body);\n" +
                         "            return Response.ok().entity(${casName(descriptor.outputs)}.fromUIMA(instance.cas)).build();\n" +
-                        "        } catch(AnalysisEngineProcessException | CASException | ResourceInitializationException x) {\n" +
-                        "            x.printStackTrace();\n" +
-                        "            return Response.serverError().entity(x).build();\n" +
+                        "        } catch(AnalysisEngineProcessException | CASException | ResourceInitializationException exc) {\n" +
+                        "            exc.printStackTrace();\n" +
+                        "            return Response.serverError().entity(exc).build();\n" +
                         "        }\n" +
                         "    }")
             }
@@ -409,8 +409,8 @@ object TeangaDKProCodeGen {
             }
             dkProInstance.print("}")
         }
-        File("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/cas").mkdirs()
-        val casEmptyOut = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/cas/EmptyCas.java")
+        File("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/cas").mkdirs()
+        val casEmptyOut = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/cas/EmptyCas.java")
         casEmptyOut.use {
             casEmptyOut.print("package org.insightcentre.uld.teanga.dkprowrapper.cas;\n" +
                     "\n" +
@@ -457,7 +457,7 @@ object TeangaDKProCodeGen {
                     "}\n")
         }
         for (casType in getCasTypes(descriptors)) {
-            val casOut = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/cas/${casType.name}.java")
+            val casOut = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/cas/${casType.name}.java")
             casOut.use {
                 casOut.print("package org.insightcentre.uld.teanga.dkprowrapper.cas;\n" +
                         "\n" +
@@ -509,8 +509,8 @@ object TeangaDKProCodeGen {
                         "}\n")
             }
         }
-        File("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/pojos").mkdirs()
-        val dkProAnnotationJava = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/pojos/DKProAnnotation.java")
+        File("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/pojos").mkdirs()
+        val dkProAnnotationJava = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/pojos/DKProAnnotation.java")
         dkProAnnotationJava.use {
             dkProAnnotationJava.print("package org.insightcentre.uld.teanga.dkprowrapper.pojos;\n" +
                     "\n" +
@@ -557,7 +557,7 @@ object TeangaDKProCodeGen {
                     "}\n")
         }
         for(pojo in getPojos(descriptors)) {
-            val pojoOut = PrintWriter("dockers/$jar/src/main/java/org/insighcentre/uld/teanga/dkprowrapper/pojos/DKPro${pojo.simpleName}.java")
+            val pojoOut = PrintWriter("dockers/$jar/src/main/java/org/insightcentre/uld/teanga/dkprowrapper/pojos/DKPro${pojo.simpleName}.java")
             pojoOut.use {
                 pojoOut.print("package org.insightcentre.uld.teanga.dkprowrapper.pojos;\n" +
                         "\n" +
