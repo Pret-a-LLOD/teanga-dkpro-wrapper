@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mvn exec:java
+mvn clean install exec:java
 
 for f in `ls dockers/`
 do

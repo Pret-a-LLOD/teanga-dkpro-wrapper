@@ -753,7 +753,16 @@ object TeangaDKProCodeGen {
             <groupId>org.dkpro.core</groupId>
             <artifactId>dkpro-core-io-text-asl</artifactId>
 	        <version>${'$'}{dkpro.version}</version>
-        </dependency>     
+        </dependency>""")
+        if(jar.contains("dictionaryannotator")) {
+            pom.print("""               
+        <dependency>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-api-ner-asl</artifactId>
+            <version>${'$'}{dkpro.version}</version>
+        </dependency>""")
+        }
+        pom.print("""
         <dependency>
             <groupId>org.glassfish.jersey.containers</groupId>
             <artifactId>jersey-container-servlet</artifactId>
