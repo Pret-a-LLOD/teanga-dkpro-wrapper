@@ -10,10 +10,9 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import org.apache.uima.fit.descriptor.ConfigurationParameter
 import org.apache.uima.fit.descriptor.ResourceMetaData
+import org.apache.uima.jcas.cas.*
 import org.apache.uima.jcas.cas.DoubleArray
-import org.apache.uima.jcas.cas.FSArray
 import org.apache.uima.jcas.cas.FloatArray
-import org.apache.uima.jcas.cas.IntegerArray
 import org.apache.uima.jcas.tcas.Annotation
 import java.io.BufferedReader
 import java.io.File
@@ -569,8 +568,11 @@ object TeangaDKProCodeGen {
                         " * @author John McCrae\n" +
                         " */\n" +
                         "@JsonInclude(JsonInclude.Include.NON_NULL)\n" +
-                        "public class DKPro${pojo.simpleName} extends DKProAnnotation {\n")
-
+                        "public class DKPro${pojo.simpleName}")
+                if(Annotation::class.java.isAssignableFrom(pojo)) {
+                    pojoOut.print(" extends DKProAnnotation")
+                }
+                pojoOut.print(" {\n")
                 for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
                         pojoOut.print("    private ${method.returnType.canonicalName} ${name};\n" +
@@ -585,8 +587,10 @@ object TeangaDKProCodeGen {
                                 "    \n")
                 }
                 pojoOut.print("    public static DKPro${pojo.simpleName} fromDKPro(${pojo.canonicalName} dkproObj) {\n" +
-                        "        DKPro${pojo.simpleName} s = new DKPro${pojo.simpleName}();\n" +
-                        "        s.annoFromDKPro(dkproObj);\n")
+                        "        DKPro${pojo.simpleName} s = new DKPro${pojo.simpleName}();\n");
+                if(Annotation::class.java.isAssignableFrom(pojo)) {
+                    pojoOut.print("        s.annoFromDKPro(dkproObj);\n")
+                }
                 for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
                         pojoOut.print("        s.set${name}(dkproObj.get${name}());\n")
@@ -595,8 +599,10 @@ object TeangaDKProCodeGen {
                         "    }\n" +
                         "\n" +
                         "    public ${pojo.canonicalName} toDKPro(JCas cas) {\n" +
-                        "        ${pojo.canonicalName} s = new ${pojo.canonicalName}(cas);\n" +
-                        "        annoToDKPro(s);\n")
+                        "        ${pojo.canonicalName} s = new ${pojo.canonicalName}(cas);\n")
+                if(Annotation::class.java.isAssignableFrom(pojo)) {
+                    pojoOut.print("        annoToDKPro(s);\n")
+                }
 
                 for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
@@ -675,7 +681,7 @@ object TeangaDKProCodeGen {
     }
 
     private fun buildPojos(clazz: Class<*>, map: MutableMap<String, Class<*>>) {
-        if(!map.contains(clazz.canonicalName) && Annotation::class.java.isAssignableFrom(clazz) && clazz.simpleName != "Annotation") {
+        if(!map.contains(clazz.canonicalName) && AnnotationBase::class.java.isAssignableFrom(clazz) && clazz.simpleName != "Annotation") {
             map[clazz.canonicalName] = clazz
             for (method in getterMethods(clazz)) {
                 buildPojos(method.returnType, map)
