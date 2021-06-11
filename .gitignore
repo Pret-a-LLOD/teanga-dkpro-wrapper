@@ -10,3 +10,4 @@ generated
 dockers
 
 .build-dockers.sh.swp
+*.swp
