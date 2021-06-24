@@ -575,16 +575,34 @@ object TeangaDKProCodeGen {
                 pojoOut.print(" {\n")
                 for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
-                        pojoOut.print("    private ${method.returnType.canonicalName} ${name};\n" +
-                                "\n" +
-                                "    public ${method.returnType.canonicalName} get${name}() {\n" +
-                                "        return ${name};\n" +
-                                "    }\n" +
-                                "\n" +
-                                "    public void set${name}(${method.returnType.canonicalName} ${name}) {\n" +
-                                "        this.${name} = ${name};\n" +
-                                "    }\n" +
-                                "    \n")
+                        if(Annotation::class.java.isAssignableFrom(method.returnType)) {
+                            pojoOut.print(
+                                "    private DKPro${method.returnType.simpleName} ${name};\n" +
+                                        "\n" +
+                                        "    public DKPro${method.returnType.simpleName} get${name}() {\n" +
+                                        "        return ${name};\n" +
+                                        "    }\n" +
+                                        "\n" +
+                                        "    public void set${name}(DKPro${method.returnType.simpleName} ${name}) {\n" +
+                                        "        this.${name} = ${name};\n" +
+                                        "    }\n" +
+                                        "    \n"
+                            )
+
+                        } else {
+                            pojoOut.print(
+                                "    private ${method.returnType.canonicalName} ${name};\n" +
+                                        "\n" +
+                                        "    public ${method.returnType.canonicalName} get${name}() {\n" +
+                                        "        return ${name};\n" +
+                                        "    }\n" +
+                                        "\n" +
+                                        "    public void set${name}(${method.returnType.canonicalName} ${name}) {\n" +
+                                        "        this.${name} = ${name};\n" +
+                                        "    }\n" +
+                                        "    \n"
+                            )
+                        }
                 }
                 pojoOut.print("    public static DKPro${pojo.simpleName} fromDKPro(${pojo.canonicalName} dkproObj) {\n" +
                         "        DKPro${pojo.simpleName} s = new DKPro${pojo.simpleName}();\n");
@@ -593,7 +611,11 @@ object TeangaDKProCodeGen {
                 }
                 for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
-                        pojoOut.print("        s.set${name}(dkproObj.get${name}());\n")
+                        if(Annotation::class.java.isAssignableFrom(method.returnType)) {
+                            pojoOut.print("        s.set${name}(DKPro${method.returnType.simpleName}.fromDKPro(dkproObj.get${name}()));\n")
+                        } else {
+                            pojoOut.print("        s.set${name}(dkproObj.get${name}());\n")
+                        }
                 }
                 pojoOut.print("        return s;\n" +
                         "    }\n" +
@@ -606,7 +628,14 @@ object TeangaDKProCodeGen {
 
                 for (method in getterMethods(pojo)) {
                         val name = method.name.substring(3)
-                        pojoOut.print("        s.set${name}(${name});\n")
+                    pojoOut.println("        if(${name} != null) {")
+                    if(Annotation::class.java.isAssignableFrom(method.returnType)) {
+                        pojoOut.print("          s.set${name}(${name}.toDKPro(cas));\n")
+
+                    } else {
+                        pojoOut.print("          s.set${name}(${name});\n")
+                    }
+                    pojoOut.println("        }");
                 }
                 pojoOut.print(
                         "        return s;\n" +
@@ -692,7 +721,8 @@ object TeangaDKProCodeGen {
     private fun getterMethods(clazz: Class<*>): List<Method> {
         return clazz.methods.filter { method -> method.name.startsWith("get") && method.declaringClass == clazz &&
                 clazz.methods.any { m2 -> m2.name == method.name.replace("get","set")} &&
-                method.parameters.isEmpty()
+                method.parameters.isEmpty() &&
+                method.returnType != Annotation::class.java
         }
     }
 
