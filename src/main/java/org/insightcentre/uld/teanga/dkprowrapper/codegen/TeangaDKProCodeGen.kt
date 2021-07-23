@@ -73,6 +73,7 @@ object TeangaDKProCodeGen {
         root["info"] = HashMap<Any, Any>()
         (root["info"] as HashMap<String, Any?>?)!!["version"] = "1.0"
         (root["info"] as HashMap<String, Any?>?)!!["title"] = "DKPro Teanga Wrapper for $jar"
+        var infoString = StringBuilder("DKPro Teanga Wrapper for $jar consists of the following services\n\n")
         val paths = HashMap<String, Any>()
         root["paths"] = paths
         val components = HashMap<String, Any>()
@@ -85,6 +86,7 @@ object TeangaDKProCodeGen {
             val m2 = HashMap<String, Any?>()
             m1["post"] = m2
             m2["summary"] = desc.description
+            infoString.append("* ").append(desc.description?.replace("\n","  \n"))
             val m3 = HashMap<String, Any>()
             m2["requestBody"] = m3
             val m4 = HashMap<String, Any>()
@@ -109,6 +111,7 @@ object TeangaDKProCodeGen {
             m11["schema"] = m12
             m12["\$ref"] = schemaObject(desc.outputs, schemas)
         }
+        (root["info"] as HashMap<String, Any?>?)!!["description"] = infoString.toString()
         return root
     }
 
